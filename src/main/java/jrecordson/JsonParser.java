@@ -1,25 +1,15 @@
 package jrecordson;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 import static java.lang.Character.isDigit;
 import static java.lang.Character.isLetter;
-import static java.util.Comparator.comparingLong;
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.joining;
 import static jrecordson.Iterables.recalling;
-import static jrecordson.Shorthands.*;
+import static jrecordson.Shorthands.then;
 
 class JsonParser {
 
@@ -142,35 +132,6 @@ class JsonParser {
             return stream().skip(index).findFirst().orElse(NULL_NODE);
         }
 
-        @SuppressWarnings("unchecked")
-        @Override
-        public <E> E asA(Class<E> type) {
-            if (type.isArray()) {
-                return (E) stream()
-                    .map(n -> n.asA(type.getComponentType()))
-                    .toArray(len -> (Object[]) Array.newInstance(type.getComponentType(), len));
-            }
-            throw new JsonReflectException("Expected array or collection for ArrayNode conversion but was " + type.getName());
-        }
-
-        @Override
-        public Object asA(Type type) {
-            if (type instanceof Class<?> c)
-                return asA(c);
-            if (type instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> c && Collection.class.isAssignableFrom(c)) {
-                Type typeBound = pt.getActualTypeArguments()[0];
-                Collector<Object, ?, ? extends Collection<Object>> collector = switch (pt.getRawType().getTypeName()) {
-                    case "java.util.List", "java.util.Collection" -> toUnmodifiableList();
-                    case "java.util.Set" -> toUnmodifiableSet();
-                    default -> throw new JsonReflectException("Unrecognized collection type " + pt.getTypeName());
-                };
-                return stream()
-                    .map(n -> n.asA(typeBound))
-                    .collect(collector);
-            }
-            throw new JsonReflectException("Expected array or collection for ArrayNode conversion but was " + type.getTypeName());
-        }
-
         @Override
         public String toString() {
             return '[' + stream().map(Object::toString).collect(joining(",")) + ']';
@@ -180,33 +141,6 @@ class JsonParser {
     private class LazyLoadObjectNode extends LazyLoadNode<JsonNode.LabelledNode> implements ObjectNode {
         public LazyLoadObjectNode(TextInput text) {
             super(new ObjectNodeTextIterator(text));
-        }
-
-        @Override
-        public JsonNode get(String key) {
-            return stream()
-                .filter(n -> n.label().equals(key))
-                .map(JsonNode.class::cast)
-                .findFirst().orElse(NULL_NODE);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public <E> E asA(Class<E> recordType) {
-            if (!recordType.isRecord())
-                throw new JsonReflectException("Expected record type but was " + recordType.getName());
-            Map<String, JsonNode> nodeMap = stream().collect(toMap(LabelledNode::label, identity()));
-            return (E) Arrays.stream(recordType.getConstructors())
-                .sorted(comparingLong(ctor -> Arrays.stream(ctor.getParameters()).map(Parameter::getName).filter(nodeMap::containsKey).count()))
-                .map(unchecked(ctor -> ctor.newInstance(Arrays.stream(ctor.getParameters()).map(param -> nodeMap.getOrDefault(param.getName(), NULL_NODE).asA(param.getParameterizedType())).toArray()), JsonReflectException::new))
-                .findFirst().orElseThrow(() -> new JsonReflectException("No suitable constructor for object"));
-        }
-
-        @Override
-        public Object asA(Type type) {
-            if (type instanceof Class<?> c)
-                return asA(c);
-            throw new JsonReflectException("Only classes supported for now"); // TODO
         }
 
         @Override
@@ -300,50 +234,4 @@ class JsonParser {
 
     }
 
-    private static class LabelledNodeDecorator implements JsonNode.LabelledNode, LazyLoading {
-
-        private final String nodeName;
-        private final JsonNode base;
-
-        public LabelledNodeDecorator(String nodeName, JsonNode base) {
-            this.nodeName = nodeName;
-            this.base = base;
-        }
-
-        @Override
-        public String label() {
-            return nodeName;
-        }
-
-        @Override
-        public JsonNode unlabelled() {
-            return base;
-        }
-
-        @Override
-        public <E> E asA(Class<E> recordType) {
-            return base.asA(recordType);
-        }
-
-        @Override
-        public Object asA(Type type) {
-            return base.asA(type);
-        }
-
-        @Override
-        public Stream<? extends JsonNode> stream() {
-            return base.stream();
-        }
-
-        @Override
-        public String toString() {
-            return "\"" + nodeName + "\":" + base.toString();
-        }
-
-        @Override
-        public void load() {
-            if (base instanceof LazyLoading lazyLoading)
-                lazyLoading.load();
-        }
-    }
 }

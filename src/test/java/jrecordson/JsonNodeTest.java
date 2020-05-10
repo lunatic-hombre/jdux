@@ -53,4 +53,10 @@ public class JsonNodeTest {
         assertEquals(inputJson, node.jsonString());
     }
 
+    @Test
+    public void reflection() {
+        var node = JsonNode.wrap(userRecord);
+        assertEquals(inputJson, node.jsonString());
+    }
+
 }

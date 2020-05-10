@@ -10,6 +10,9 @@ import static jrecordson.JsonWriter.DEFAULT_WRITER;
 
 public interface JsonNode {
 
+    static JsonNode wrap(Object object) {
+        return new NodeReflection().toNode(object);
+    }
     static JsonNode parse(String str) {
         return JsonParser.DEFAULT_PARSER.parse(TextInput.wrap(str));
     }

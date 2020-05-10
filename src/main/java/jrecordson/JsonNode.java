@@ -2,34 +2,72 @@ package jrecordson;
 
 import java.io.Reader;
 import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.stream.Stream;
+
+import static jrecordson.JsonWriter.DEFAULT_WRITER;
 
 public interface JsonNode {
 
     static JsonNode parse(String str) {
-        return JsonParser.DEFAULT.parseNode(TextInput.wrap(str));
+        return JsonParser.DEFAULT_PARSER.parse(TextInput.wrap(str));
     }
     static JsonNode parse(Reader reader) {
-        return JsonParser.DEFAULT.parseNode(TextInput.wrap(reader));
+        return JsonParser.DEFAULT_PARSER.parse(TextInput.wrap(reader));
+    }
+    static void setPretty() {
+        DEFAULT_WRITER.setPretty(true);
+    }
+    static void write(JsonNode node, Appendable out) {
+        DEFAULT_WRITER.write(node, out);
     }
 
-    <E> E asA(Class<E> recordType);
+    default String jsonString() {
+        StringBuilder out = new StringBuilder();
+        write(this, out);
+        return out.toString();
+    }
 
+    /**
+     * Convert to the given type.
+     * @param type the desired type; must be a record if object node,
+     *             collection / array if array node, or primitive / string if value node
+     * @return the converted value
+     */
+    <E> E asA(Class<E> type);
+
+    /**
+     * Looser form of asA(Class) for generic type support.
+     */
     Object asA(Type type);
 
-    Stream<? extends JsonNode> stream();
+    /**
+     * Iterator over this node's children.
+     * @return the node's children; empty if non-object / array node
+     */
+    default Iterator<? extends JsonNode> iterator() {
+        return Collections.emptyIterator();
+    }
 
+    /**
+     * Stream over this node's children.
+     * @return the node's children; empty if non-object / array node
+     */
+    default Stream<? extends JsonNode> stream() {
+        return Stream.empty();
+    }
+
+    /**
+     * Convenience method to perform "asA()" operation over this node's children.
+     */
     default <E> Stream<E> streamAs(Class<E> recordType) {
         return stream().map(n -> n.asA(recordType));
     }
 
     interface LabelledNode extends JsonNode {
         String label();
-    }
-
-    interface ObjectNode extends JsonNode {
-        @Override
-        Stream<? extends LabelledNode> stream();
+        JsonNode unlabelled();
     }
 
     @SuppressWarnings("unchecked")
@@ -48,10 +86,6 @@ public interface JsonNode {
         @Override
         public Object asA(Type type) {
             return value; // TODO
-        }
-        @Override
-        public Stream<? extends JsonNode> stream() {
-            throw new UnsupportedOperationException("Cannot iterate on value node");
         }
 
         @Override
@@ -83,10 +117,6 @@ public interface JsonNode {
         @Override
         public Object asA(Type type) {
             return null;
-        }
-        @Override
-        public Stream<? extends JsonNode> stream() {
-            throw new UnsupportedOperationException("Cannot iterate on value node");
         }
         @Override
         public String toString() {

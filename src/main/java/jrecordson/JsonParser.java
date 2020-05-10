@@ -23,14 +23,14 @@ import static jrecordson.Shorthands.*;
 
 class JsonParser {
 
-    static final JsonParser DEFAULT = new JsonParser();
+    static final JsonParser DEFAULT_PARSER = new JsonParser();
     static final JsonNode.NullNode NULL_NODE = new JsonNode.NullNode();
 
     private static final int
         MAX_INT_DIGITS = String.valueOf(Integer.MAX_VALUE).length(),
         MAX_LONG_DIGITS = String.valueOf(Long.MAX_VALUE).length();
 
-    JsonNode parseNode(TextInput text) {
+    public JsonNode parse(TextInput text) {
         try {
             if (!text.hasNext())
                 return new JsonNode.NullNode();
@@ -117,6 +117,11 @@ class JsonParser {
         }
 
         @Override
+        public Iterator<N> iterator() {
+            return children.iterator();
+        }
+
+        @Override
         public Stream<N> stream() {
             return Streams.toStream(children);
         }
@@ -127,9 +132,14 @@ class JsonParser {
         }
     }
 
-    private class LazyLoadArrayNode extends LazyLoadNode<JsonNode> {
+    private class LazyLoadArrayNode extends LazyLoadNode<JsonNode> implements ArrayNode {
         public LazyLoadArrayNode(TextInput text) {
             super(new ArrayNodeTextIterator(text));
+        }
+
+        @Override
+        public JsonNode get(int index) {
+            return stream().skip(index).findFirst().orElse(NULL_NODE);
         }
 
         @SuppressWarnings("unchecked")
@@ -167,9 +177,17 @@ class JsonParser {
         }
     }
 
-    private class LazyLoadObjectNode extends LazyLoadNode<JsonNode.LabelledNode> implements JsonNode.ObjectNode {
+    private class LazyLoadObjectNode extends LazyLoadNode<JsonNode.LabelledNode> implements ObjectNode {
         public LazyLoadObjectNode(TextInput text) {
             super(new ObjectNodeTextIterator(text));
+        }
+
+        @Override
+        public JsonNode get(String key) {
+            return stream()
+                .filter(n -> n.label().equals(key))
+                .map(JsonNode.class::cast)
+                .findFirst().orElse(NULL_NODE);
         }
 
         @SuppressWarnings("unchecked")
@@ -262,7 +280,7 @@ class JsonParser {
             else
                 throw new JsonParseException("Expected letter or quote but was " + ((char) peek), text);
             text.skipWhitespace().skipIgnoreCase(':').skipWhitespace();
-            JsonNode base = parseNode(text);
+            JsonNode base = parse(text);
             return setPrevious(new LabelledNodeDecorator(nodeName, base));
         }
     }
@@ -277,7 +295,7 @@ class JsonParser {
         public JsonNode next() {
             skipComma();
             text.skipWhitespace();
-            return setPrevious(parseNode(text));
+            return setPrevious(parse(text));
         }
 
     }
@@ -295,6 +313,11 @@ class JsonParser {
         @Override
         public String label() {
             return nodeName;
+        }
+
+        @Override
+        public JsonNode unlabelled() {
+            return base;
         }
 
         @Override

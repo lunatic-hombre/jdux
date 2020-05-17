@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 public class JsonParseException extends RuntimeException {
 

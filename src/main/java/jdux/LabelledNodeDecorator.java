@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.lang.reflect.Type;
 import java.util.stream.Stream;
@@ -34,8 +34,8 @@ class LabelledNodeDecorator implements JsonNode.LabelledNode, LazyLoading {
     }
 
     @Override
-    public Stream<? extends JsonNode> stream() {
-        return base.stream();
+    public Stream<? extends JsonNode> children() {
+        return base.children();
     }
 
     @Override

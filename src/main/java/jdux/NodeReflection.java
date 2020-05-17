@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -47,15 +47,19 @@ public class NodeReflection {
         }
 
         @Override
-        public Iterator<? extends JsonNode> iterator() {
+        public Iterator<? extends JsonNode> childrenIter() {
             return nodes.iterator();
         }
 
         @Override
-        public Stream<? extends JsonNode> stream() {
+        public Stream<? extends JsonNode> children() {
             return nodes.stream();
         }
 
+        @Override
+        public String toString() {
+            return jsonString();
+        }
     }
 
     private class RecordNode implements ObjectNode {
@@ -67,12 +71,7 @@ public class NodeReflection {
         }
 
         @Override
-        public Iterator<? extends LabelledNode> iterator() {
-            return stream().iterator();
-        }
-
-        @Override
-        public Stream<? extends LabelledNode> stream() {
+        public Stream<? extends LabelledNode> children() {
             return Stream.of(obj.getClass().getDeclaredFields())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
                 .map(this::asLabeledNode);
@@ -87,6 +86,11 @@ public class NodeReflection {
             } catch (ReflectiveOperationException e) {
                 throw new JsonReflectException(e);
             }
+        }
+
+        @Override
+        public String toString() {
+            return jsonString();
         }
 
     }

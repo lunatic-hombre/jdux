@@ -1,34 +1,14 @@
-package jrecordson;
+package jdux;
 
-import java.io.Reader;
 import java.lang.reflect.Type;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
-import static jrecordson.JsonWriter.DEFAULT_WRITER;
-
 public interface JsonNode {
-
-    static JsonNode wrap(Object object) {
-        return new NodeReflection().toNode(object);
-    }
-    static JsonNode parse(String str) {
-        return JsonParser.DEFAULT_PARSER.parse(TextInput.wrap(str));
-    }
-    static JsonNode parse(Reader reader) {
-        return JsonParser.DEFAULT_PARSER.parse(TextInput.wrap(reader));
-    }
-    static void setPretty() {
-        DEFAULT_WRITER.setPretty(true);
-    }
-    static void write(JsonNode node, Appendable out) {
-        DEFAULT_WRITER.write(node, out);
-    }
 
     default String jsonString() {
         StringBuilder out = new StringBuilder();
-        write(this, out);
+        JDux.write(this, out);
         return out.toString();
     }
 
@@ -49,23 +29,21 @@ public interface JsonNode {
      * Iterator over this node's children.
      * @return the node's children; empty if non-object / array node
      */
-    default Iterator<? extends JsonNode> iterator() {
-        return Collections.emptyIterator();
+    default Iterator<? extends JsonNode> childrenIter() {
+        return children().iterator();
     }
 
     /**
      * Stream over this node's children.
      * @return the node's children; empty if non-object / array node
      */
-    default Stream<? extends JsonNode> stream() {
-        return Stream.empty();
-    }
+    Stream<? extends JsonNode> children();
 
     /**
      * Convenience method to perform "asA()" operation over this node's children.
      */
-    default <E> Stream<E> streamAs(Class<E> recordType) {
-        return stream().map(n -> n.asA(recordType));
+    default <E> Stream<E> children(Class<E> recordType) {
+        return children().map(n -> n.asA(recordType));
     }
 
     interface LabelledNode extends JsonNode {
@@ -89,6 +67,11 @@ public interface JsonNode {
         @Override
         public Object asA(Type type) {
             return value; // TODO
+        }
+
+        @Override
+        public Stream<? extends JsonNode> children() {
+            return Stream.empty();
         }
 
         @Override
@@ -120,6 +103,10 @@ public interface JsonNode {
         @Override
         public Object asA(Type type) {
             return null;
+        }
+        @Override
+        public Stream<? extends JsonNode> children() {
+            return Stream.empty();
         }
         @Override
         public String toString() {

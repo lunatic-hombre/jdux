@@ -1,10 +1,8 @@
-package jrecordson;
+package jdux;
 
 import java.io.IOException;
 
 public class JsonWriter {
-
-    static final JsonWriter DEFAULT_WRITER = new JsonWriter();
 
     private boolean pretty = false;
     private String indent = "  ";
@@ -16,12 +14,20 @@ public class JsonWriter {
         this.indent = indent;
     }
 
-    public void setPretty(boolean pretty) {
+    public JsonWriter setPretty(boolean pretty) {
         this.pretty = pretty;
+        return this;
     }
 
-    public void setIndent(String indent) {
+    public JsonWriter setIndent(String indent) {
         this.indent = indent;
+        return this;
+    }
+
+    public String toString(JsonNode node) {
+        StringBuilder sb = new StringBuilder();
+        write(node, sb);
+        return sb.toString();
     }
 
     public void write(JsonNode node, Appendable out) {
@@ -35,10 +41,8 @@ public class JsonWriter {
             writeObject(depth, on, out);
         else if (node instanceof JsonNode.LabelledNode ln)
             writeLabelled(depth, ln, out);
-        else if (node instanceof JsonNode.ValueNode<?> vn)
-            writeValue(vn, out);
         else
-            throw new JsonReflectException("Unknown node type " + node);
+            writeValue(node, out);
     }
 
     private void writeArray(int depth, ArrayNode an, Appendable out) {
@@ -60,7 +64,7 @@ public class JsonWriter {
         }
     }
 
-    private void writeValue(JsonNode.ValueNode<?> node, Appendable out) {
+    private void writeValue(JsonNode node, Appendable out) {
         try {
             out.append(node.toString());
         } catch (IOException e) {
@@ -71,7 +75,7 @@ public class JsonWriter {
     private void writeCollection(int depth, JsonNode node, Appendable out, char open, char close) {
         try {
             out.append(open);
-            var children = node.iterator();
+            var children = node.childrenIter();
             if (!children.hasNext()) {
                 out.append(close);
                 return;

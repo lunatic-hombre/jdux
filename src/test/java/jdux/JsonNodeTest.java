@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -27,12 +27,12 @@ public class JsonNodeTest {
 
     @BeforeClass
     public static void setUp() {
-        JsonNode.setPretty();
+        JDux.setPretty();
     }
 
     @Test
     public void serializationOfUser() {
-        var node = JsonNode.parse(inputJson);
+        var node = JDux.parse(inputJson);
         var unpretty = "{" +
             "\"id\":123,\"name\":\"Bob Loblaw\"," +
             "\"roles\":[{\"id\":1,\"name\":\"Manager\"}]" +
@@ -42,20 +42,20 @@ public class JsonNodeTest {
 
     @Test
     public void parseAndMapToRecord() {
-        var node = JsonNode.parse(inputJson);
+        var node = JDux.parse(inputJson);
         var user = node.asA(UserRecord.class);
         assertEquals(userRecord, user);
     }
 
     @Test
     public void prettyOutput() {
-        var node = JsonNode.parse(inputJson);
+        var node = JDux.parse(inputJson);
         assertEquals(inputJson, node.jsonString());
     }
 
     @Test
     public void reflection() {
-        var node = JsonNode.wrap(userRecord);
+        var node = JDux.node(userRecord);
         assertEquals(inputJson, node.jsonString());
     }
 

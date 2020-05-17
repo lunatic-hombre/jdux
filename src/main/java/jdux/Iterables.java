@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,8 +6,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
-import static jrecordson.Shorthands.skip;
+import static jdux.Shorthands.skip;
 
 class Iterables {
 
@@ -24,6 +26,24 @@ class Iterables {
     @SafeVarargs
     public static <E> Iterator<E> concat(Iterator<? extends E>... iterators) {
         return new IteratorChain<>(new ArrayIterator<>(iterators));
+    }
+
+    // TODO make nice
+    public static <E> Iterator<E> filter(Iterator<E> iterator, Predicate<? super E> predicate) {
+        return Streams.toStream(iterator).filter(predicate).iterator();
+    }
+    public static <E> Iterable<E> filter(Iterable<E> iterable, Predicate<? super E> predicate) {
+        return () -> filter(iterable.iterator(), predicate);
+    }
+    public static <E,F> Iterator<F> filterMap(Iterator<E> iterator,
+                                            Predicate<? super E> predicate,
+                                            Function<? super E, F> map) {
+        return Streams.toStream(iterator).filter(predicate).map(map).iterator();
+    }
+    public static <E,F> Iterable<F> filterMap(Iterable<E> iterable,
+                                              Predicate<? super E> predicate,
+                                              Function<? super E, F> map) {
+        return () -> filterMap(iterable.iterator(), predicate, map);
     }
 
     /**

@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
@@ -17,7 +17,7 @@ public interface ArrayNode extends JsonNode {
     @Override
     default <E> E asA(Class<E> type) {
         if (type.isArray()) {
-            return (E) stream()
+            return (E) children()
                 .map(n -> n.asA(type.getComponentType()))
                 .toArray(len -> (Object[]) Array.newInstance(type.getComponentType(), len));
         }
@@ -35,7 +35,7 @@ public interface ArrayNode extends JsonNode {
                 case "java.util.Set" -> toUnmodifiableSet();
                 default -> throw new JsonReflectException("Unrecognized collection type " + pt.getTypeName());
             };
-            return stream()
+            return children()
                 .map(n -> n.asA(typeBound))
                 .collect(collector);
         }

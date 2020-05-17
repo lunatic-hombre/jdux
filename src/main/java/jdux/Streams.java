@@ -1,9 +1,8 @@
-package jrecordson;
+package jdux;
 
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -26,8 +25,17 @@ final class Streams {
         return optional.isPresent() ? Stream.of(optional.get()) : Stream.empty();
     }
 
+    public static <T, U> Stream<T> merge(Stream<? extends T> trunk, Stream<? extends T> branch, Function<? super T, U> mapping) {
+        return Stream.concat(branch, trunk).filter(distinctByKey(mapping));
+    }
+
+    private static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+        Set<Object> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(keyExtractor.apply(t));
+    }
+
     public static <T> Predicate<T> after(Predicate<T> condition) {
-        return new Predicate<T>() {
+        return new Predicate<>() {
             boolean found = false;
             @Override
             public boolean test(T t) {

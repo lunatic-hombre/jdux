@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 public class JsonReflectException extends RuntimeException {
     public JsonReflectException(Throwable cause) {

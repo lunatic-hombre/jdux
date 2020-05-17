@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -19,7 +19,7 @@ import static java.lang.Character.toLowerCase;
  */
 public interface TextInput extends AutoCloseable {
 
-    Pool<CharBuffer> BUFFER_POOL = Pool.create(() -> CharBuffer.allocate(512));
+    Pool<CharBuffer> BUFFER_POOL = Pool.create(() -> CharBuffer.allocate(1024));
 
     static TextInput wrap(String str) {
         return wrap(new StringReader(str));

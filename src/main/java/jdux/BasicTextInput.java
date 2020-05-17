@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -117,9 +117,9 @@ class BasicTextInput implements TextInput {
         if (this.closed)
             return;
         try {
+            TextInput.BUFFER_POOL.put(buffer);
             onClose.run();
             reader.close();
-            TextInput.BUFFER_POOL.put(buffer);
             this.closed = true;
         } catch (IOException e) {
             throw new IORuntimeException(e);

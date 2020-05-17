@@ -1,4 +1,4 @@
-package jrecordson;
+package jdux;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -8,12 +8,11 @@ import java.util.stream.Stream;
 import static java.lang.Character.isDigit;
 import static java.lang.Character.isLetter;
 import static java.util.stream.Collectors.joining;
-import static jrecordson.Iterables.recalling;
-import static jrecordson.Shorthands.then;
+import static jdux.Iterables.recalling;
+import static jdux.Shorthands.then;
 
 class JsonParser {
 
-    static final JsonParser DEFAULT_PARSER = new JsonParser();
     static final JsonNode.NullNode NULL_NODE = new JsonNode.NullNode();
 
     private static final int
@@ -107,12 +106,12 @@ class JsonParser {
         }
 
         @Override
-        public Iterator<N> iterator() {
+        public Iterator<N> childrenIter() {
             return children.iterator();
         }
 
         @Override
-        public Stream<N> stream() {
+        public Stream<N> children() {
             return Streams.toStream(children);
         }
 
@@ -129,12 +128,12 @@ class JsonParser {
 
         @Override
         public JsonNode get(int index) {
-            return stream().skip(index).findFirst().orElse(NULL_NODE);
+            return children().skip(index).findFirst().orElse(NULL_NODE);
         }
 
         @Override
         public String toString() {
-            return '[' + stream().map(Object::toString).collect(joining(",")) + ']';
+            return '[' + children().map(Object::toString).collect(joining(",")) + ']';
         }
     }
 
@@ -145,7 +144,7 @@ class JsonParser {
 
         @Override
         public String toString() {
-            return "{" + stream().map(Object::toString).collect(joining(",")) + "}";
+            return "{" + children().map(Object::toString).collect(joining(",")) + "}";
         }
     }
 

@@ -65,7 +65,8 @@ public final class JDux {
     }
 
     private static String nextString() {
-        return Base64.getEncoder().encodeToString(ByteBuffer.allocate(4).putInt(RANDOM.nextInt()).array());
+        byte[] intBytes = ByteBuffer.allocate(4).putInt(RANDOM.nextInt()).array();
+        return Base64.getEncoder().encodeToString(intBytes).replaceAll("\\W", "0");
     }
 
 }

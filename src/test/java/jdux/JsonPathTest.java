@@ -11,7 +11,7 @@ public class JsonPathTest {
         JsonSelector selector = JsonPath.parse("foo");
         assertEquals(1, selector.length());
         String key = "foo";
-        JsonPickType type = JsonPickType.CHILD;
+        JsonSelectType type = JsonSelectType.CHILD;
         assertElemMatches(selector, type, key);
     }
 
@@ -19,13 +19,13 @@ public class JsonPathTest {
     public void parseChain() {
         JsonSelector selector = JsonPath.parse("foo.bar..doo.gar");
         assertEquals(4, selector.length());
-        assertElemMatches(selector, JsonPickType.CHILD, "foo");
-        assertElemMatches(selector = selector.next(), JsonPickType.CHILD, "bar");
-        assertElemMatches(selector = selector.next(), JsonPickType.DESCENDANT, "doo");
-        assertElemMatches(selector.next(), JsonPickType.CHILD, "gar");
+        assertElemMatches(selector, JsonSelectType.CHILD, "foo");
+        assertElemMatches(selector = selector.next(), JsonSelectType.CHILD, "bar");
+        assertElemMatches(selector = selector.next(), JsonSelectType.DESCENDANT, "doo");
+        assertElemMatches(selector.next(), JsonSelectType.CHILD, "gar");
     }
 
-    private void assertElemMatches(JsonSelector elem, JsonPickType type, String key) {
+    private void assertElemMatches(JsonSelector elem, JsonSelectType type, String key) {
         assertEquals(key, elem.key());
         assertEquals(type, elem.type());
     }

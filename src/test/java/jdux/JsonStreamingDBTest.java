@@ -42,7 +42,7 @@ public class JsonStreamingDBTest {
         try (var out = Files.newBufferedWriter(temp)) {
             pretty.write(node, out);
         }
-        db = JDux.file(temp);
+        db = JDux.fileDB(temp);
         updates = new ArrayList<>();
     }
 

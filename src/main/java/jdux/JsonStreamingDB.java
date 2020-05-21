@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static jdux.Iterables.filter;
 import static jdux.Iterables.filterMap;
-import static jdux.JsonPickType.DESCENDANT;
+import static jdux.JsonSelectType.DESCENDANT;
 import static jdux.Shorthands.then;
 
 class JsonStreamingDB implements JsonDB {
@@ -60,22 +60,28 @@ class JsonStreamingDB implements JsonDB {
 
     @Override
     public void update(String query, UnaryOperator<JsonNode> update) {
+        JsonNode updatedNode = decorateRootWithUpdate(query, update);
+        String ref = writeNode(updatedNode);
+        swap.accept(ref);
+    }
+
+    private JsonNode decorateRootWithUpdate(String query, UnaryOperator<JsonNode> update) {
         var path = JsonPath.parse(query);
         var superSetSubscribers = allSubscribers.stream().filter(s -> s.selection.contains(path)).collect(toList());
         if (!superSetSubscribers.isEmpty())
             update = then(update, result -> superSetSubscribers.forEach(s -> s.onUpdate.accept(result)));
         var subsetSubscribers = filter(allSubscribers, s -> path.contains(s.selection) && !superSetSubscribers.contains(s));
+        return updateNode(root(), path, subsetSubscribers, update);
+    }
 
-        var updatedNode = updateNode(root(), path, subsetSubscribers, update);
-
-        // write to output stream and swap in result for next read
+    private String writeNode(JsonNode updatedNode) {
         WriterReference output = sink.get();
         try (var out = output.out()) {
             writer.write(updatedNode, out);
         } catch (IOException e) {
             throw new IORuntimeException(e);
         }
-        swap.accept(output.ref());
+        return output.ref();
     }
 
     @Override

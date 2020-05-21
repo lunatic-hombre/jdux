@@ -1,5 +1,5 @@
 package jdux;
 
-public enum JsonPickType {
+public enum JsonSelectType {
     CHILD, DESCENDANT
 }

@@ -3,6 +3,11 @@ package jdux;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
@@ -12,6 +17,7 @@ public class JsonNodeTest {
             {
               "id": 123,
               "name": "Bob Loblaw",
+              "lastLogin": "2020-02-20T20:20:20Z",
               "roles": [
                 {
                   "id": 1,
@@ -22,6 +28,7 @@ public class JsonNodeTest {
     private final UserRecord userRecord = new UserRecord(
         123,
         "Bob Loblaw",
+        Instant.parse("2020-02-20T20:20:20Z").atZone(ZoneId.systemDefault()),
         singletonList(new RoleRecord(1, "Manager"))
     );
 
@@ -35,6 +42,7 @@ public class JsonNodeTest {
         var node = JDux.parse(inputJson);
         var unpretty = "{" +
             "\"id\":123,\"name\":\"Bob Loblaw\"," +
+            "\"lastLogin\":\"2020-02-20T20:20:20Z\"," +
             "\"roles\":[{\"id\":1,\"name\":\"Manager\"}]" +
         "}";
         assertEquals(unpretty, node.toString());

@@ -2,6 +2,8 @@ package jdux;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -17,6 +19,8 @@ public class NodeReflection {
             return new JsonNode.NullNode();
         if (obj instanceof String s)
             return new JsonNode.StringNode(s);
+        if (obj instanceof TemporalAccessor ta)
+            return new JsonNode.StringNode(DateTimeFormatter.ISO_INSTANT.format(ta));
         Class<?> type = obj.getClass();
         if (type.isPrimitive() || Primitives.isWrapperType(type))
             return new JsonNode.ValueNode<>(obj);

@@ -2,7 +2,7 @@ package jdux;
 
 public interface JsonSelectorSegment {
 
-    JsonPickType type();
+    JsonSelectType type();
 
     String key();
 

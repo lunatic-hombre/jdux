@@ -1,6 +1,12 @@
 package jdux;
 
 import java.lang.reflect.Type;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
@@ -61,11 +67,12 @@ public interface JsonNode {
         public <E> E asA(Class<E> recordType) {
             if (recordType.isInstance(value))
                 return recordType.cast(value);
-            // TODO conversion
-            throw new JsonReflectException("Cannot convert " + value + " to " + recordType.getName());
+            return (E) value; // TODO
         }
         @Override
         public Object asA(Type type) {
+            if (type instanceof Class<?> c)
+                return asA(c);
             return value; // TODO
         }
 
@@ -79,13 +86,15 @@ public interface JsonNode {
             return String.valueOf(value);
         }
     }
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     class StringNode extends ValueNode<String> {
         StringNode(String value) {
             super(value);
         }
         @Override
         public <E> E asA(Class<E> type) {
+            if (TemporalAccessor.class.isAssignableFrom(type))
+                return (E) asTime((Class) type);
             if (type != String.class)
                 throw new UnsupportedOperationException("Cannot parse string value");
             return (E) value; // TODO
@@ -93,6 +102,14 @@ public interface JsonNode {
         @Override
         public String toString() {
             return '"' + value + '"';
+        }
+        public <T extends TemporalAccessor> T asTime(Class<T> type) {
+            try {
+                ZonedDateTime ta = Instant.parse(value).atZone(ZoneId.systemDefault());
+                return (T) type.getMethod("from", TemporalAccessor.class).invoke(null, ta);
+            } catch (ReflectiveOperationException e) {
+                throw new JsonReflectException(e);
+            }
         }
     }
     class NullNode implements JsonNode {

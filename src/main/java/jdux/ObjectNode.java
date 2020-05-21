@@ -20,11 +20,17 @@ public interface ObjectNode extends JsonNode {
     default <E> E asA(Class<E> recordType) {
         if (!recordType.isRecord())
             throw new JsonReflectException("Expected record type but was " + recordType.getName());
-        Map<String, JsonNode> nodeMap = children().collect(toMap(LabelledNode::label, identity()));
+        Map<String, JsonNode> nodeMap = children().collect(toMap(LabelledNode::label, LabelledNode::unlabelled));
         return (E) Arrays.stream(recordType.getConstructors())
             .sorted(comparingLong(ctor -> Arrays.stream(ctor.getParameters()).map(Parameter::getName).filter(nodeMap::containsKey).count()))
-            .map(unchecked(ctor -> ctor.newInstance(Arrays.stream(ctor.getParameters()).map(param -> nodeMap.getOrDefault(param.getName(), new NullNode()).asA(param.getParameterizedType())).toArray()), JsonReflectException::new))
-            .findFirst().orElseThrow(() -> new JsonReflectException("No suitable constructor for object"));
+            .map(unchecked(ctor -> {
+                Object[] args = Arrays.stream(ctor.getParameters())
+                    .map(param -> nodeMap.getOrDefault(param.getName(), new NullNode()).asA(param.getParameterizedType()))
+                    .toArray();
+                return ctor.newInstance(args);
+            }, JsonReflectException::new))
+            .findFirst()
+            .orElseThrow(() -> new JsonReflectException("No suitable constructor for object"));
     }
 
     @Override

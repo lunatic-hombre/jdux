@@ -4,6 +4,7 @@ import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Random;
 
@@ -27,6 +28,10 @@ public final class JDux {
         DEFAULT_WRITER.write(node, out);
     }
 
+    public static void write(Object obj, Appendable out) {
+        DEFAULT_WRITER.write(node(obj), out);
+    }
+
     public static JsonNode parse(String str) {
         return DEFAULT_PARSER.parse(TextInput.wrap(str));
     }
@@ -35,21 +40,22 @@ public final class JDux {
         return DEFAULT_PARSER.parse(TextInput.wrap(reader));
     }
 
-    public static JsonDB file(Path path) {
+    public static JsonDB fileDB(Path path) {
         return new JsonStreamingDB(
             unchecked(() -> TextInput.wrap(Files.newBufferedReader(path)), IORuntimeException::new),
             unchecked(() -> {
-                String ref = nextString();
-                return new JsonStreamingDB.WriterReference(ref, Files.newBufferedWriter(temp(path, ref)));
+                Path tempFile = Files.createTempFile(nextString(), "json");
+                String ref = tempFile.toString();
+                return new JsonStreamingDB.WriterReference(ref, Files.newBufferedWriter(tempFile));
             }, IORuntimeException::new),
             ref -> {
                 try {
-                    Files.move(temp(path, ref), path, REPLACE_EXISTING);
+                    Files.move(Paths.get(ref), path, REPLACE_EXISTING);
                 } catch (Exception e) {
                     throw new IORuntimeException(e);
                 }
             },
-            new JsonParser(),
+            new JsonParser(false),
             new JsonWriter()
         );
     }
@@ -60,10 +66,6 @@ public final class JDux {
 
     private static String nextString() {
         return Base64.getEncoder().encodeToString(ByteBuffer.allocate(4).putInt(RANDOM.nextInt()).array());
-    }
-
-    private static Path temp(Path path, String ref) {
-        return path.resolveSibling(ref + "_" + path.getFileName());
     }
 
 }

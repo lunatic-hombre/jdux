@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 import static java.lang.Character.isDigit;
 import static java.lang.Character.isLetter;
 import static java.util.stream.Collectors.joining;
+import static jdux.Iterables.loading;
 import static jdux.Iterables.recalling;
 import static jdux.Shorthands.then;
 
@@ -18,6 +19,16 @@ class JsonParser {
     private static final int
         MAX_INT_DIGITS = String.valueOf(Integer.MAX_VALUE).length(),
         MAX_LONG_DIGITS = String.valueOf(Long.MAX_VALUE).length();
+
+    private final boolean recall;
+
+    public JsonParser() {
+        this(true);
+    }
+
+    public JsonParser(boolean recall) {
+        this.recall = recall;
+    }
 
     public JsonNode parse(TextInput text) {
         try {
@@ -98,11 +109,11 @@ class JsonParser {
         throw new JsonParseException("Expected boolean value but was \"" + stringValue + "\".");
     }
 
-    private abstract static class LazyLoadNode<N extends JsonNode> implements JsonNode, LazyLoading {
+    private abstract class LazyLoadNode<N extends JsonNode> implements JsonNode, LazyLoading {
         LazyLoadingIterable<N> children;
 
         LazyLoadNode(JsonChildNodeTextIterator<N> unread) {
-            this.children = recalling(unread);
+            this.children = recall ? recalling(unread) : loading(unread);
         }
 
         @Override

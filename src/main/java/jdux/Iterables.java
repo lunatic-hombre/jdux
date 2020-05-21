@@ -20,6 +20,19 @@ class Iterables {
         return new ListLoadingIterable<>(iterator);
     }
 
+    public static <E> LazyLoadingIterable<E> loading(Iterator<E> iterator) {
+        return new LazyLoadingIterable<>() {
+            @Override
+            public Iterator<E> iterator() {
+                return iterator;
+            }
+            @Override
+            public void load() {
+                iterator.forEachRemaining(skip());
+            }
+        };
+    }
+
     /**
      * Given some iterators, treat them as a single one, with each leading into the next.
      */

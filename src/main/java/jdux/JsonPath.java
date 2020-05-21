@@ -3,7 +3,7 @@ package jdux;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static jdux.JsonPickType.CHILD;
+import static jdux.JsonSelectType.CHILD;
 
 // TODO cleanup
 public class JsonPath {
@@ -28,25 +28,25 @@ public class JsonPath {
     private static JsonPathElem readNextSegment(int index, Matcher matcher) {
         if (matcher.start() != index)
             throw new JsonPathParseException("Unexpected characters");
-        JsonPickType type = matcher.group("type").length() > 1
-            ? JsonPickType.DESCENDANT
+        JsonSelectType type = matcher.group("type").length() > 1
+            ? JsonSelectType.DESCENDANT
             : CHILD;
         return new JsonPathElem(type, matcher.group("key"));
     }
 
     private static class JsonPathElem implements JsonSelector {
 
-        final JsonPickType type;
+        final JsonSelectType type;
         final String key;
         JsonPathElem next;
 
-        JsonPathElem(JsonPickType type, String key) {
+        JsonPathElem(JsonSelectType type, String key) {
             this.type = type;
             this.key = key;
         }
 
         @Override
-        public JsonPickType type() {
+        public JsonSelectType type() {
             return type;
         }
 

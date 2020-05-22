@@ -3,9 +3,7 @@ package jdux;
 import java.lang.reflect.Type;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Iterator;
 import java.util.stream.Stream;
@@ -45,6 +43,13 @@ public interface JsonNode {
      */
     Stream<? extends JsonNode> children();
 
+    default Stream<? extends JsonNode> descendents() {
+        return children()
+            .flatMap(child -> Stream.concat(Stream.of(child), child.descendents()));
+    }
+
+    boolean isLeaf();
+
     /**
      * Convenience method to perform "asA()" operation over this node's children.
      */
@@ -77,6 +82,11 @@ public interface JsonNode {
         }
 
         @Override
+        public boolean isLeaf() {
+            return true;
+        }
+
+        @Override
         public Stream<? extends JsonNode> children() {
             return Stream.empty();
         }
@@ -101,7 +111,7 @@ public interface JsonNode {
         }
         @Override
         public String toString() {
-            return '"' + value + '"';
+            return '"' + value + '"'; // TODO UTF escaping
         }
         public <T extends TemporalAccessor> T asTime(Class<T> type) {
             try {
@@ -113,6 +123,10 @@ public interface JsonNode {
         }
     }
     class NullNode implements JsonNode {
+        @Override
+        public boolean isLeaf() {
+            return true;
+        }
         @Override
         public <E> E asA(Class<E> recordType) {
             return null;

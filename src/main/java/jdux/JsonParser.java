@@ -20,7 +20,7 @@ class JsonParser {
         MAX_INT_DIGITS = String.valueOf(Integer.MAX_VALUE).length(),
         MAX_LONG_DIGITS = String.valueOf(Long.MAX_VALUE).length();
 
-    private final boolean recall;
+    private boolean recall;
 
     public JsonParser() {
         this(true);
@@ -28,6 +28,11 @@ class JsonParser {
 
     public JsonParser(boolean recall) {
         this.recall = recall;
+    }
+
+    public JsonParser recall(boolean recall) {
+        this.recall = recall;
+        return this;
     }
 
     public JsonNode parse(TextInput text) {

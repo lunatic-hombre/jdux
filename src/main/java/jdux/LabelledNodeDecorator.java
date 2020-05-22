@@ -35,7 +35,12 @@ class LabelledNodeDecorator implements JsonNode.LabelledNode, LazyLoading {
 
     @Override
     public Stream<? extends JsonNode> children() {
-        return base.children();
+        return base.isLeaf() ? Stream.of(base) : base.children();
+    }
+
+    @Override
+    public String jsonString() {
+        return base.jsonString();
     }
 
     @Override
@@ -48,4 +53,10 @@ class LabelledNodeDecorator implements JsonNode.LabelledNode, LazyLoading {
         if (base instanceof LazyLoading lazyLoading)
             lazyLoading.load();
     }
+
+    @Override
+    public boolean isLeaf() {
+        return false;
+    }
+
 }

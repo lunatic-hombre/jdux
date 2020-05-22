@@ -1,7 +1,5 @@
 package jdux;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,13 +9,14 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static jdux.Iterables.filter;
 import static jdux.Iterables.filterMap;
 import static jdux.JsonSelectType.DESCENDANT;
 import static jdux.Shorthands.then;
 
-class JsonStreamingDB implements JsonDB {
+class StreamingJsonDB implements JsonDB {
 
     record JsonUpdateSubscriber(JsonSelector selection, Consumer<JsonNode> onUpdate) {
         boolean isDescendant() {
@@ -36,18 +35,16 @@ class JsonStreamingDB implements JsonDB {
         }
     }
 
-    public static record WriterReference(String ref, Writer out) {}
-
     private final Supplier<TextInput> source;
-    private final Supplier<WriterReference> sink;
-    private final Consumer<String> swap;
+    private final Supplier<Appendable> sink;
+    private final Runnable swap;
     private final JsonParser parser;
     private final JsonWriter writer;
     private final Collection<JsonUpdateSubscriber> allSubscribers;
 
-    JsonStreamingDB(Supplier<TextInput> source,
-                    Supplier<WriterReference> sink,
-                    Consumer<String> swap,
+    StreamingJsonDB(Supplier<TextInput> source,
+                    Supplier<Appendable> sink,
+                    Runnable swap,
                     JsonParser parser,
                     JsonWriter writer) {
         this.source = source;
@@ -61,8 +58,7 @@ class JsonStreamingDB implements JsonDB {
     @Override
     public void update(String query, UnaryOperator<JsonNode> update) {
         JsonNode updatedNode = decorateRootWithUpdate(query, update);
-        String ref = writeNode(updatedNode);
-        swap.accept(ref);
+        writeNode(updatedNode);
     }
 
     private JsonNode decorateRootWithUpdate(String query, UnaryOperator<JsonNode> update) {
@@ -71,27 +67,68 @@ class JsonStreamingDB implements JsonDB {
         if (!superSetSubscribers.isEmpty())
             update = then(update, result -> superSetSubscribers.forEach(s -> s.onUpdate.accept(result)));
         var subsetSubscribers = filter(allSubscribers, s -> path.contains(s.selection) && !superSetSubscribers.contains(s));
-        return updateNode(root(), path, subsetSubscribers, update);
+        return updateNode(root(false), path, subsetSubscribers, update);
     }
 
-    private String writeNode(JsonNode updatedNode) {
-        WriterReference output = sink.get();
-        try (var out = output.out()) {
+    private void writeNode(JsonNode updatedNode) {
+        var out = sink.get();
+        try {
             writer.write(updatedNode, out);
-        } catch (IOException e) {
-            throw new IORuntimeException(e);
+        } finally {
+            try {
+                if (out instanceof AutoCloseable c)
+                    c.close();
+            } catch (Exception e1) {
+                // do nothing
+            }
         }
-        return output.ref();
+        swap.run();
+    }
+
+    @Override
+    public StreamingJsonDB root(JsonNode newRoot) {
+        writeNode(newRoot);
+        return this;
     }
 
     @Override
     public JsonNode root() {
-        return parser.parse(source.get());
+        return root(true);
+    }
+
+    private JsonNode root(boolean recall) {
+        return parser.recall(recall).parse(source.get());
     }
 
     @Override
     public void subscribe(String query, Consumer<JsonNode> consumer) {
         allSubscribers.add(new JsonUpdateSubscriber(JsonPath.parse(query), consumer));
+    }
+
+    @Override
+    public Stream<JsonNode> select(String path) {
+        var generation = singletonList(root(true));
+        for (JsonSelectorSegment segment : JsonPath.parse(path)) {
+            generation = switch (segment.type()) {
+                case CHILD -> generation.stream().flatMap(JsonNode::children).filter(segment).collect(toList());
+                case DESCENDANT -> generation.stream().flatMap(JsonNode::descendents).filter(segment).collect(toList());
+            };
+        }
+        return generation.stream();
+    }
+
+    @Override
+    public JsonSubject subject(String path) {
+        return new JsonSubject() {
+            @Override
+            public void update(UnaryOperator<JsonNode> update) {
+                StreamingJsonDB.this.update(path, update);
+            }
+            @Override
+            public void subscribe(Consumer<JsonNode> consumer) {
+                StreamingJsonDB.this.subscribe(path, consumer);
+            }
+        };
     }
 
     JsonNode updateNode(JsonNode node,
@@ -204,6 +241,11 @@ class JsonStreamingDB implements JsonDB {
             return select.type() == DESCENDANT
                 ? updateNode(n, select, subscribers, update)
                 : n;
+        }
+
+        @Override
+        public boolean isLeaf() {
+            return node.isLeaf();
         }
 
         @Override

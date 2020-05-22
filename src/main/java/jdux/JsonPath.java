@@ -1,11 +1,11 @@
 package jdux;
 
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static jdux.JsonSelectType.CHILD;
 
-// TODO cleanup
 public class JsonPath {
 
     private static final Pattern PATH_ELEM = Pattern.compile("(?<type>^|\\.\\.?)(?<key>\\w+)");
@@ -34,7 +34,7 @@ public class JsonPath {
         return new JsonPathElem(type, matcher.group("key"));
     }
 
-    private static class JsonPathElem implements JsonSelector {
+    private static class JsonPathElem implements JsonSelector, JsonSelectorSegment {
 
         final JsonSelectType type;
         final String key;
@@ -43,6 +43,16 @@ public class JsonPath {
         JsonPathElem(JsonSelectType type, String key) {
             this.type = type;
             this.key = key;
+        }
+
+        @Override
+        public JsonSelectorSegment root() {
+            return this;
+        }
+
+        @Override
+        public JsonSelector next() {
+            return next;
         }
 
         @Override
@@ -56,19 +66,28 @@ public class JsonPath {
         }
 
         @Override
+        public Iterator<JsonSelectorSegment> iterator() {
+            return new Iterator<>() {
+                JsonPathElem elem = JsonPathElem.this;
+                @Override
+                public boolean hasNext() {
+                    return elem != null;
+                }
+                @Override
+                public JsonSelectorSegment next() {
+                    try {
+                        return elem;
+                    } finally {
+                        elem = elem.next;
+                    }
+                }
+            };
+        }
+
+        @Override
         public boolean contains(JsonSelector other) {
             return other.toString("", "!")
                 .matches(toString("", ".*"));
-        }
-
-        @Override
-        public boolean hasNext() {
-            return next != null;
-        }
-
-        @Override
-        public JsonSelector next() {
-            return next;
         }
 
         @Override

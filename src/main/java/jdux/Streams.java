@@ -13,6 +13,10 @@ final class Streams {
         throw new AssertionError("This is a static utility class.");
     }
 
+    public static <T> Stream<T> toStream(Queue<T> queue) {
+        return Stream.generate(queue::remove).takeWhile(n -> !queue.isEmpty());
+    }
+
     public static <T> Stream<T> toStream(Iterable<? extends T> iterable) {
         return StreamSupport.stream((Spliterator<T>) iterable.spliterator(), false);
     }

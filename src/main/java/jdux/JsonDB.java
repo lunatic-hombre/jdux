@@ -2,6 +2,7 @@ package jdux;
 
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 public interface JsonDB {
 
@@ -38,9 +39,28 @@ public interface JsonDB {
     void subscribe(String path, Consumer<JsonNode> consumer);
 
     /**
+     * Query the JSON tree for the given path.
+     * @param path in form of a.b..c where {a,b,c} are field names in the JSON tree
+     * @return     A stream of matching nodes.
+     */
+    Stream<JsonNode> select(String path);
+
+    /**
+     * Chain method to isolate a subset of nodes.
+     * @param path in form of a.b..c where {a,b,c} are field names in the JSON tree
+     * @return     A subject for updates / subscriptions on a subset of nodes.
+     */
+    JsonSubject subject(String path);
+
+    /**
      * Get the root of the JSON tree.
      * @return the root of the JSON tree.
      */
     JsonNode root();
+
+    /**
+     * Set the root of the JSON tree.
+     */
+    JsonDB root(JsonNode newRoot);
 
 }

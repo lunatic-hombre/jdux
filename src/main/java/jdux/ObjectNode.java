@@ -60,6 +60,11 @@ public interface ObjectNode extends JsonNode {
         return () -> merge(children(), Stream.of(labelledNode), LabelledNode::label);
     }
 
+    @Override
+    default boolean isLeaf() {
+        return false;
+    }
+
     default JsonNode get(String key) {
         return children()
             .filter(n -> n.label().equals(key))

@@ -42,4 +42,9 @@ public interface ArrayNode extends JsonNode {
         throw new JsonReflectException("Expected array or collection for ArrayNode conversion but was " + type.getTypeName());
     }
 
+    @Override
+    default boolean isLeaf() {
+        return false;
+    }
+
 }

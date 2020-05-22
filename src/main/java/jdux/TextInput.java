@@ -1,5 +1,6 @@
 package jdux;
 
+import java.io.CharArrayReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -21,6 +22,9 @@ public interface TextInput extends AutoCloseable {
 
     Pool<CharBuffer> BUFFER_POOL = Pool.create(() -> CharBuffer.allocate(1024));
 
+    static TextInput wrap(CharBuffer buffer) {
+        return wrap(new CharArrayReader(buffer.array()));
+    }
     static TextInput wrap(String str) {
         return wrap(new StringReader(str));
     }

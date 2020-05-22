@@ -3,16 +3,15 @@ package jdux;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
-public class JsonStreamingDBTest {
+public abstract class AbstractStreamingJsonDBTest {
 
-    private static final String JSON = """
+    static final String SAMPLE_JSON = """
         {
           "user": {
             "name": "Steve",
@@ -30,31 +29,28 @@ public class JsonStreamingDBTest {
           ]
         }""";
 
-    private final JsonWriter pretty = new JsonWriter().setPretty(true);
+    private final JsonWriter writer = new JsonWriter().setPretty(true);
 
-    private JsonDB db;
-    private List<JsonNode> updates;
+    protected JsonDB db;
+    protected List<JsonNode> updates;
 
     @Before
-    public void setUp() throws Exception {
-        Path temp = Files.createTempFile("test", "json");
-        JsonNode node = JDux.parse(JSON);
-        try (var out = Files.newBufferedWriter(temp)) {
-            pretty.write(node, out);
-        }
-        db = JDux.fileDB(temp);
+    public void setUp() {
+        db = getDB().root(JDux.parse(SAMPLE_JSON));
         updates = new ArrayList<>();
     }
 
+    protected abstract JsonDB getDB();
+
     @Test
     public void changeUser() {
-        TestUserRecord bob = new TestUserRecord("Bob", 43);
+        TestUserRecord bob = new TestUserRecord("Bob Loblaw", 43);
         db.subscribe("user", updates::add);
         db.update("user", bob);
         String expected = """
             {
               "user": {
-                "name": "Bob",
+                "name": "Bob Loblaw",
                 "age": 43
               },
               "friends": [
@@ -68,7 +64,7 @@ public class JsonStreamingDBTest {
                 }
               ]
             }""";
-        assertEquals(expected, pretty.toString(db.root()));
+        assertEquals(expected, writer.toString(db.root()));
         assertEquals(1, updates.size());
         assertEquals(bob, updates.get(0).asA(TestUserRecord.class));
     }
@@ -95,7 +91,7 @@ public class JsonStreamingDBTest {
                 }
               ]
             }""";
-        assertEquals(expected, pretty.toString(db.root()));
+        assertEquals(expected, writer.toString(db.root()));
         assertEquals(3, updates.size());
     }
 
@@ -120,8 +116,15 @@ public class JsonStreamingDBTest {
                 }
               ]
             }""";
-        assertEquals(expected, pretty.toString(db.root()));
+        assertEquals(expected, writer.toString(db.root()));
         assertEquals(1, updates.size());
+    }
+
+    @Test
+    public void select() {
+        assertEquals("\"Steve\",\"Joe\",\"Eddie\"",
+            db.select("..name").map(JsonNode::jsonString)
+                .collect(Collectors.joining(",")));
     }
 
     record TestUserRecord(String name, int age) {}

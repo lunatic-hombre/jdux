@@ -1,9 +1,6 @@
 package jdux;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -18,6 +15,19 @@ class Iterables {
      */
     public static <E> LazyLoadingIterable<E> recalling(Iterator<E> iterator) {
         return new ListLoadingIterable<>(iterator);
+    }
+
+    public static <E> Iterator<E> takeAll(Queue<E> queue) {
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return !queue.isEmpty();
+            }
+            @Override
+            public E next() {
+                return queue.remove();
+            }
+        };
     }
 
     public static <E> LazyLoadingIterable<E> loading(Iterator<E> iterator) {

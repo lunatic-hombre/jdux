@@ -18,6 +18,12 @@ import static jdux.Shorthands.then;
 
 class StreamingJsonDB implements JsonDB {
 
+    interface StreamOptions<O extends Appendable> {
+        TextInput input();
+        O output();
+        void after(O output);
+    }
+
     record JsonUpdateSubscriber(JsonSelector selection, Consumer<JsonNode> onUpdate) {
         boolean isDescendant() {
             return selection.type() == DESCENDANT;
@@ -37,19 +43,30 @@ class StreamingJsonDB implements JsonDB {
 
     private final Supplier<TextInput> source;
     private final Supplier<Appendable> sink;
-    private final Runnable swap;
+    private final Consumer<Appendable> after;
     private final JsonParser parser;
     private final JsonWriter writer;
     private final Collection<JsonUpdateSubscriber> allSubscribers;
 
+    @SuppressWarnings("unchecked") // TODO lazy
+    <O extends Appendable> StreamingJsonDB(StreamOptions<O> streamOptions) {
+        this(
+            streamOptions::input,
+            streamOptions::output,
+            appendable -> streamOptions.after((O) appendable),
+            new JsonParser(),
+            new JsonWriter()
+        );
+    }
+
     StreamingJsonDB(Supplier<TextInput> source,
                     Supplier<Appendable> sink,
-                    Runnable swap,
+                    Consumer<Appendable> after,
                     JsonParser parser,
                     JsonWriter writer) {
         this.source = source;
         this.sink = sink;
-        this.swap = swap;
+        this.after = after;
         this.parser = parser;
         this.writer = writer;
         this.allSubscribers = new ArrayList<>();
@@ -72,17 +89,8 @@ class StreamingJsonDB implements JsonDB {
 
     private void writeNode(JsonNode updatedNode) {
         var out = sink.get();
-        try {
-            writer.write(updatedNode, out);
-        } finally {
-            try {
-                if (out instanceof AutoCloseable c)
-                    c.close();
-            } catch (Exception e1) {
-                // do nothing
-            }
-        }
-        swap.run();
+        writer.write(updatedNode, out);
+        after.accept(out);
     }
 
     @Override

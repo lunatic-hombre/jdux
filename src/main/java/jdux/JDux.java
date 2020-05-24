@@ -3,20 +3,20 @@ package jdux;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
+import java.nio.channels.Channels;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
-import java.util.Random;
+import java.util.Collections;
+import java.util.HashSet;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static jdux.Shorthands.unchecked;
+import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 public final class JDux {
 
-    private static final Random RANDOM = new Random();
     private static final NodeReflection REFLECT = new NodeReflection();
     private static final JsonParser DEFAULT_PARSER = new JsonParser();
     private static final JsonWriter DEFAULT_WRITER = new JsonWriter();
@@ -63,14 +63,7 @@ public final class JDux {
      * @param size number of bytes to allocate
      */
     public static JsonDB memDB(int size) {
-        ReadWriteBuffers buffers = new ReadWriteBuffers(size);
-        return new StreamingJsonDB(
-            buffers::textInput,
-            buffers::writer,
-            buffers::swap,
-            new JsonParser(),
-            new JsonWriter()
-        );
+        return new StreamingJsonDB(new ReadWriteBuffers(size));
     }
 
     /**
@@ -78,75 +71,86 @@ public final class JDux {
      * @param path path to your chosen JSON file
      */
     public static JsonDB fileDB(Path path) {
-        JsonDBFiles files = new JsonDBFiles(path);
-        return new StreamingJsonDB(
-            unchecked(files::textInput, IORuntimeException::new),
-            unchecked(files::writer, IORuntimeException::new),
-            unchecked(files::swap, IORuntimeException::new),
-            new JsonParser(),
-            new JsonWriter()
-        );
+        return new StreamingJsonDB(new FileChannels(path));
     }
 
     public static void setPretty() {
         DEFAULT_WRITER.setPretty(true);
     }
 
-    private static String nextString() {
-        byte[] intBytes = ByteBuffer.allocate(4).putInt(RANDOM.nextInt()).array();
-        return Base64.getEncoder().encodeToString(intBytes).replaceAll("\\W", "0");
-    }
-
     private static class JsonDBFiles {
 
-        private final Path read, write;
+        private final Path file;
 
-        public JsonDBFiles(Path read) {
-            this.read = read;
+        public JsonDBFiles(Path file) {
+            this.file = file;
+        }
+
+        TextInput textInput() throws IOException {
+            return TextInput.wrap(Files.newBufferedReader(file)); // TODO charset
+        }
+
+        Writer writer() throws IOException {
+            return Files.newBufferedWriter(file);
+        }
+
+    }
+
+    private static class FileChannels implements StreamingJsonDB.StreamOptions<Writer> {
+
+        private final SeekableByteChannel read, write;
+
+        public FileChannels(Path file) {
             try {
-                this.write = Files.createTempFile(nextString(), "json");
+                this.read = Files.newByteChannel(file, new HashSet<>(Collections.singleton(READ)));
+                this.write = Files.newByteChannel(file, new HashSet<>(Collections.singleton(WRITE)));
             } catch (IOException e) {
                 throw new IORuntimeException(e);
             }
         }
 
-        TextInput textInput() throws IOException {
-            return TextInput.wrap(Files.newByteChannel(read), Charset.defaultCharset()); // TODO charset
+        @Override
+        public TextInput input() {
+            return TextInput.wrap(Channels.newReader(read, StandardCharsets.US_ASCII));
         }
 
-        Writer writer() throws IOException {
-            return Files.newBufferedWriter(write);
+        @Override
+        public Writer output() {
+            return Channels.newWriter(write, StandardCharsets.US_ASCII);
         }
 
-        void swap() throws IOException {
-            Files.move(write, read, REPLACE_EXISTING);
+        @Override
+        public void after(Writer output) {
+            try {
+                output.flush();
+            } catch (IOException e) {
+                throw new IORuntimeException(e);
+            }
         }
-
     }
+    private static class ReadWriteBuffers implements StreamingJsonDB.StreamOptions<CharBuffer> {
 
-    private static class ReadWriteBuffers {
-
-        private CharBuffer readBuffer, writerBuffer;
+        private final CharBuffer read, write;
 
         ReadWriteBuffers(int size) {
-            this.readBuffer = CharBuffer.allocate(size);
-            this.writerBuffer = CharBuffer.allocate(size);
+            this.write = CharBuffer.allocate(size);
+            this.read = write.asReadOnlyBuffer();
         }
 
-        TextInput textInput() {
-            return TextInput.wrap(readBuffer);
+        @Override
+        public TextInput input() {
+            read.position(0);
+            return TextInput.wrap(read.asReadOnlyBuffer());
         }
 
-        Appendable writer() {
-            return writerBuffer;
+        @Override
+        public CharBuffer output() {
+            write.position(0);
+            return write;
         }
 
-        void swap() {
-            CharBuffer swap = readBuffer;
-            readBuffer = writerBuffer;
-            writerBuffer = swap.clear();
-        }
-
+        @Override
+        public void after(CharBuffer output) {} // do nothing
     }
 
 }

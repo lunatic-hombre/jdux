@@ -1,24 +1,23 @@
 package jdux;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.CharBuffer;
 import java.util.function.IntPredicate;
 
 class BasicTextInput implements TextInput {
 
-    private final Reader reader;
+    private final Readable reader;
     private final CharBuffer buffer;
     private final Runnable onClose;
 
     private long charsRead;
     private boolean closed;
 
-    public BasicTextInput(Reader reader, CharBuffer buffer, Runnable onClose) {
+    public BasicTextInput(Readable reader, CharBuffer buffer, Runnable onClose) {
         this(reader, buffer, onClose, 0L);
     }
 
-    public BasicTextInput(Reader reader, CharBuffer buffer, Runnable onClose, long position) {
+    public BasicTextInput(Readable reader, CharBuffer buffer, Runnable onClose, long position) {
         this.reader = reader;
         this.buffer = buffer;
         this.onClose = onClose;
@@ -119,9 +118,10 @@ class BasicTextInput implements TextInput {
         try {
             TextInput.BUFFER_POOL.put(buffer);
             onClose.run();
-            reader.close();
+            if (reader instanceof AutoCloseable ac)
+                ac.close();
             this.closed = true;
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new IORuntimeException(e);
         }
     }

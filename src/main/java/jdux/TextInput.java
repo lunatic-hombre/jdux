@@ -1,14 +1,7 @@
 package jdux;
 
-import java.io.CharArrayReader;
-import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.nio.CharBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.charset.Charset;
 import java.util.function.IntPredicate;
 
 import static java.lang.Character.toLowerCase;
@@ -22,22 +15,15 @@ public interface TextInput extends AutoCloseable {
 
     Pool<CharBuffer> BUFFER_POOL = Pool.create(() -> CharBuffer.allocate(1024));
 
-    static TextInput wrap(CharBuffer buffer) {
-        return wrap(new CharArrayReader(buffer.array()));
-    }
     static TextInput wrap(String str) {
         return wrap(new StringReader(str));
     }
-    static TextInput wrap(ReadableByteChannel channel, Charset charset) throws IOException {
-        return channel instanceof SeekableByteChannel
-            ? wrap(Channels.newReader(channel, charset.name()), ((SeekableByteChannel) channel).position())
-            : wrap(Channels.newReader(channel, charset.name()));
-    }
-    static TextInput wrap(Reader in) {
+
+    static TextInput wrap(Readable in) {
         final CharBuffer buffer = BUFFER_POOL.get();
         return new BasicTextInput(in, buffer, () -> BUFFER_POOL.put(buffer));
     }
-    static TextInput wrap(Reader in, long position) {
+    static TextInput wrap(Readable in, long position) {
         final CharBuffer buffer = BUFFER_POOL.get();
         return new BasicTextInput(in, buffer, () -> BUFFER_POOL.put(buffer), position);
     }

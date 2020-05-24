@@ -84,6 +84,7 @@ public class JsonPath {
             };
         }
 
+        // TODO performance
         @Override
         public boolean contains(JsonSelector other) {
             return other.toString("", "!")

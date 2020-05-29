@@ -105,6 +105,8 @@ public interface JsonNode {
         public <E> E asA(Class<E> type) {
             if (TemporalAccessor.class.isAssignableFrom(type))
                 return (E) asTime((Class) type);
+            if (type.isEnum())
+                return (E) Enum.valueOf((Class) type, value);
             if (type != String.class)
                 throw new UnsupportedOperationException("Cannot parse string value");
             return (E) value; // TODO

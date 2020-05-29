@@ -1,12 +1,9 @@
 package jdux;
 
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
+public interface JsonSubject extends Subject<JsonNode> {
 
-public interface JsonSubject {
-
-    void update(UnaryOperator<JsonNode> update);
-
-    void subscribe(Consumer<JsonNode> consumer);
+    default <E> Subject<E> map(Class<E> type) {
+        return map(n -> n.asA(type), JDux::node);
+    }
 
 }

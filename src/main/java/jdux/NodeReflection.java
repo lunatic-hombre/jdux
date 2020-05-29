@@ -1,13 +1,11 @@
 package jdux;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -21,15 +19,19 @@ public class NodeReflection {
             return new JsonNode.StringNode(s);
         if (obj instanceof TemporalAccessor ta)
             return new JsonNode.StringNode(DateTimeFormatter.ISO_INSTANT.format(ta));
+        if (obj instanceof Collection<?> collection)
+            return new ListNode(collection.stream()
+                .map(this::toNode)
+                .collect(toList()));
+        if (obj instanceof Map<?, ?> map)
+            return new MapNode(map);
         Class<?> type = obj.getClass();
         if (type.isPrimitive() || Primitives.isWrapperType(type))
             return new JsonNode.ValueNode<>(obj);
+        if (type.isEnum())
+            return new JsonNode.StringNode(obj.toString());
         if (type.isArray())
             return new ListNode(Arrays.stream((Object[]) obj)
-                .map(this::toNode)
-                .collect(toList()));
-        if (obj instanceof Collection<?> collection)
-            return new ListNode(collection.stream()
                 .map(this::toNode)
                 .collect(toList()));
         if (type.isRecord())
@@ -68,25 +70,24 @@ public class NodeReflection {
 
     private class RecordNode implements ObjectNode {
 
-        private final Object obj;
+        private final Object record;
 
-        public RecordNode(Object obj) {
-            this.obj = obj;
+        public RecordNode(Object record) {
+            this.record = record;
         }
 
         @Override
         public Stream<? extends LabelledNode> children() {
-            return Stream.of(obj.getClass().getDeclaredFields())
+            return Stream.of(record.getClass().getDeclaredFields())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
                 .map(this::asLabeledNode);
         }
 
         private LabelledNode asLabeledNode(Field field) {
             try {
-                return new LabelledNodeDecorator(
-                    field.getName(),
-                    toNode(obj.getClass().getMethod(field.getName()).invoke(obj))
-                );
+                Method getter = record.getClass().getMethod(field.getName());
+                JsonNode value = toNode(getter.invoke(record));
+                return new LabelledNodeDecorator(field.getName(), value);
             } catch (ReflectiveOperationException e) {
                 throw new JsonReflectException(e);
             }
@@ -98,4 +99,25 @@ public class NodeReflection {
         }
 
     }
+
+    class MapNode implements ObjectNode {
+
+        private final Map<?, ?> map;
+
+        public MapNode(Map<?, ?> map) {
+            this.map = map;
+        }
+
+        @Override
+        public Stream<? extends LabelledNode> children() {
+            return map.entrySet().stream()
+                .map(e -> new LabelledNodeDecorator(String.valueOf(e.getKey()), toNode(e.getValue())));
+        }
+
+        @Override
+        public String toString() {
+            return jsonString();
+        }
+    }
+
 }

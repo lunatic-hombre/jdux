@@ -1,6 +1,5 @@
 package jdux;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.stream.Stream;
@@ -92,10 +91,7 @@ class JsonParser {
             else
                 number = new BigInteger(stringValue);
         } else if (stringValue.matches("-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?")) {
-            if (stringValue.length() < MAX_LONG_DIGITS)
-                number = Double.parseDouble(stringValue);
-            else
-                number = new BigDecimal(stringValue);
+            number = Double.parseDouble(stringValue);
         } else {
             throw new JsonParseException("Expected number value but was \"" + stringValue + "\".");
         }

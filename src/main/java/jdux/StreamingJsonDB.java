@@ -136,6 +136,10 @@ class StreamingJsonDB implements JsonDB {
             public void subscribe(Consumer<JsonNode> consumer) {
                 StreamingJsonDB.this.subscribe(path, consumer);
             }
+            @Override
+            public JsonNode get() {
+                return StreamingJsonDB.this.select(path).findFirst().orElse(null);
+            }
         };
     }
 

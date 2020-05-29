@@ -5,8 +5,6 @@ import org.junit.Test;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
